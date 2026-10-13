@@ -52,11 +52,11 @@ export async function checkBackendHealth(timeoutMs = 3000) {
 }
 
 /**
- * Resilient API fetch wrapper for future Phase 2 endpoints.
+ * Resilient API fetch wrapper for backend endpoints.
  * 
  * @param {string} endpoint - Path relative to API_BASE_URL (e.g., '/materials')
  * @param {RequestInit} [options={}] - Fetch configuration options
- * @returns {Promise<{ success: boolean, data?: any, error?: string }>}
+ * @returns {Promise<{ success: boolean, data?: any, error?: string, status?: number }>}
  */
 export async function apiRequest(endpoint, options = {}) {
   const url = endpoint.startsWith('http')
@@ -103,8 +103,71 @@ export async function apiRequest(endpoint, options = {}) {
   }
 }
 
+/**
+ * Fetches all saved learning materials from the backend.
+ * 
+ * @param {string} [subjectCode] - Optional filter by subject code
+ * @returns {Promise<{ success: boolean, data?: Array, error?: string }>}
+ */
+export async function getMaterials(subjectCode) {
+  const query = subjectCode ? `?subject_code=${encodeURIComponent(subjectCode)}` : '';
+  return apiRequest(`/materials${query}`, { method: 'GET' });
+}
+
+/**
+ * Uploads a document file (.pdf, .docx, .txt) with multipart/form-data.
+ * 
+ * @param {File} file - The file to upload
+ * @param {object} [metadata={}] - Optional metadata { title, subject_code, description }
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function uploadMaterial(file, metadata = {}) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (metadata.title) formData.append('title', metadata.title);
+  if (metadata.subject_code) formData.append('subject_code', metadata.subject_code);
+  if (metadata.description) formData.append('description', metadata.description);
+
+  return apiRequest('/materials/upload', {
+    method: 'POST',
+    body: formData
+  });
+}
+
+/**
+ * Fetches specific document details by ID.
+ * 
+ * @param {number|string} id - Document ID
+ */
+export async function getMaterialDetails(id) {
+  return apiRequest(`/materials/${id}`, { method: 'GET' });
+}
+
+/**
+ * Fetches full extracted text content for a document ID.
+ * 
+ * @param {number|string} id - Document ID
+ */
+export async function getMaterialContent(id) {
+  return apiRequest(`/materials/${id}/content`, { method: 'GET' });
+}
+
+/**
+ * Deletes a document by ID.
+ * 
+ * @param {number|string} id - Document ID
+ */
+export async function deleteMaterial(id) {
+  return apiRequest(`/materials/${id}`, { method: 'DELETE' });
+}
+
 export default {
   API_BASE_URL,
   checkBackendHealth,
-  apiRequest
+  apiRequest,
+  getMaterials,
+  uploadMaterial,
+  getMaterialDetails,
+  getMaterialContent,
+  deleteMaterial
 };

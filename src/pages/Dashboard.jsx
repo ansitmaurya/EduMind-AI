@@ -14,9 +14,11 @@ import {
   Sparkles,
   ChevronRight,
   FileCheck,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
+import LearningMaterialsManager from '../components/LearningMaterialsManager';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -113,6 +115,14 @@ export default function Dashboard() {
       path: "/subjects",
       bg: "#ecfdf5",
       color: "#10b981"
+    },
+    {
+      title: "Upload Notes",
+      desc: "Extract text from PDF/DOCX",
+      icon: FileText,
+      path: "/materials",
+      bg: "#fffbeb",
+      color: "#d97706"
     },
     {
       title: "View Progress",
@@ -323,6 +333,9 @@ export default function Dashboard() {
               ))}
             </div>
           </section>
+
+          {/* Learning Materials & Document Processing (Phase 2) */}
+          <LearningMaterialsManager />
 
           {/* Weekly Study Progress Visual */}
           <section className="dash-section">

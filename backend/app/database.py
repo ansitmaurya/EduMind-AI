@@ -61,7 +61,33 @@ def check_db_connection() -> Tuple[bool, str, Dict[str, Any]]:
 def init_db() -> None:
     """
     Initializes database schema by registering all models and creating tables.
+    Also handles safe column additions for existing SQLite tables.
     """
     # Import all models to register with Base metadata
     import backend.app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Safely migrate new columns if learning_materials already existed
+    try:
+        with engine.connect() as conn:
+            cursor = conn.connection.cursor()
+            cursor.execute("PRAGMA table_info(learning_materials)")
+            existing_cols = {row[1] for row in cursor.fetchall()}
+            if existing_cols:
+                if "storage_path" not in existing_cols:
+                    cursor.execute("ALTER TABLE learning_materials ADD COLUMN storage_path VARCHAR(500)")
+                if "extracted_char_count" not in existing_cols:
+                    cursor.execute("ALTER TABLE learning_materials ADD COLUMN extracted_char_count INTEGER DEFAULT 0")
+                if "error_message" not in existing_cols:
+                    cursor.execute("ALTER TABLE learning_materials ADD COLUMN error_message TEXT")
+                conn.connection.commit()
+
+            cursor.execute("PRAGMA table_info(quizzes)")
+            existing_quiz_cols = {row[1] for row in cursor.fetchall()}
+            if existing_quiz_cols and "generation_mode" not in existing_quiz_cols:
+                cursor.execute("ALTER TABLE quizzes ADD COLUMN generation_mode VARCHAR(50) DEFAULT 'fallback'")
+                conn.connection.commit()
+    except Exception:
+        # Pass if table not created yet or already updated
+        pass
+

@@ -10,6 +10,7 @@ import ProgressPage from './pages/ProgressPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import SubjectsPage from './pages/SubjectsPage';
+import MaterialsPage from './pages/MaterialsPage';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/materials" element={<MaterialsPage />} />
         <Route path="/assistant" element={<AiAssistantPage />} />
         <Route path="/quizzes" element={<QuizzesPage />} />
         <Route path="/subjects" element={<SubjectsPage />} />

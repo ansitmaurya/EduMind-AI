@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.routers.health import router as health_router
+from backend.app.routers.materials import router as materials_router
 
 
 @asynccontextmanager
@@ -36,6 +37,7 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(health_router, prefix="/api")
+app.include_router(materials_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])

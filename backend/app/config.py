@@ -20,6 +20,7 @@ class Settings:
         "Personalized Training and Quiz Generation"
     )
     VERSION: str = "2.0.0"
+    BASE_DIR: Path = BASE_DIR
     APP_ENV: str = os.getenv("APP_ENV", "development")
     APP_HOST: str = os.getenv("APP_HOST", "127.0.0.1")
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
@@ -38,5 +39,13 @@ class Settings:
         origin.strip() for origin in _raw_cors.split(",") if origin.strip()
     ]
 
+    # Upload configuration
+    MAX_UPLOAD_SIZE_BYTES: int = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(10 * 1024 * 1024)))  # 10 MB default
+    UPLOAD_DIR: Path = BASE_DIR / "uploads"
+    ALLOWED_EXTENSIONS: set[str] = {"pdf", "docx", "txt"}
+
 
 settings = Settings()
+# Ensure upload directory exists
+settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+

@@ -12,10 +12,13 @@ class LearningMaterial(Base):
     description = Column(Text, nullable=True)
     subject_code = Column(String(50), nullable=False, index=True)
     file_name = Column(String(255), nullable=True)
-    file_type = Column(String(50), nullable=True)  # e.g., 'pdf', 'txt', 'notes'
+    file_type = Column(String(50), nullable=True)  # 'pdf', 'docx', 'txt'
     file_size_bytes = Column(Integer, nullable=True)
+    storage_path = Column(String(500), nullable=True)
     extracted_text = Column(Text, nullable=True)
-    status = Column(String(50), default="ready", nullable=False)  # 'uploaded', 'processing', 'ready', 'failed'
+    extracted_char_count = Column(Integer, default=0, nullable=False)
+    status = Column(String(50), default="ready", nullable=False)  # 'ready', 'failed', 'empty_text'
+    error_message = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

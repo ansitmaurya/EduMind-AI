@@ -15,6 +15,7 @@ class Quiz(Base):
     difficulty = Column(String(50), default="Intermediate", nullable=False)  # 'Beginner', 'Intermediate', 'Advanced'
     time_limit_seconds = Column(Integer, default=600, nullable=False)
     total_questions = Column(Integer, default=0, nullable=False)
+    generation_mode = Column(String(50), default="fallback", nullable=False)  # 'ai' or 'fallback'
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

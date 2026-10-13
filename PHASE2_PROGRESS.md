@@ -2,115 +2,117 @@
 
 **Official Title:** AI-Enabled Learning Platform for Competency Assessment, Personalized Training and Quiz Generation  
 **Theme:** Smart Education (Smart India Hackathon)  
-**Current Phase:** Phase 2 — Step 1: Backend Foundation & Database Setup  
+**Current Phase:** Phase 2 — Step 2 Complete (Document Upload, Extraction, Persistence & Frontend UI)  
 **Last Updated:** October 13, 2026  
 
 ---
 
-## 1. What Was Already Implemented in Phase 1 (Frontend Prototype)
+## 1. Phase 1 Assets Preserved
 
-Phase 1 provided a comprehensive, responsive React SPA prototype using Vite and Vanilla CSS:
+The Phase 1 frontend prototype was completely preserved and enhanced without any disruptive rewrites:
 
-- **Landing Page (`/`):** Hero section, value propositions, feature highlights, FAQs, and navigation.
-- **Authentication Shells (`/login`, `/signup`):** UI forms with demo login shortcut ("Alex") redirecting directly to `/dashboard`.
-- **Main Dashboard (`/dashboard`):** Subject overview cards, study hours tracking, quiz metrics, and quick action shortcuts.
-- **Subject Browser (`/subjects`, `/subjects/:slug`):** 6 B.Tech subjects with chapter curricula, progress bars, and module lists.
-- **Smart Quiz Interface (`/quizzes`):** Interactive 10-question multiple-choice quiz engine with timer, question navigation, option selection, score calculation, and review screens.
-- **Progress & Analytics (`/progress`):** Visual weekly/monthly study graphs, topic completion rates, quiz scores, and subject mastery breakdown.
-- **AI Assistant Page (`/assistant`) & Modal:** Conversational chat interface prototype with mock prompts for concept explanations and summaries.
-- **Profile (`/profile`) & Settings (`/settings`):** User preferences, academic profile details, theme switcher, and study goal settings.
-
-*Note on Phase 1 Data:* All data was in-memory static/mock JavaScript definitions without persistent storage or API connectivity.
+- **Landing Page (`/`):** Preserved branding, hero section, features, FAQs, and navigation.
+- **Authentication Shells (`/login`, `/signup`):** Preserved quick access demo login.
+- **Main Dashboard (`/dashboard`):** Preserved overview statistics, continue learning subject cards, and analytics. Added an embedded `LearningMaterialsManager` section and quick action shortcut.
+- **Subject Browser (`/subjects`, `/subjects/:slug`):** Preserved 6 B.Tech curricula and module hierarchies.
+- **Smart Quiz Engine (`/quizzes`):** Preserved 10-question MCQ player, timers, review screens, and score visualizers.
+- **Progress & Analytics (`/progress`):** Preserved study graphs and mastery tracking.
+- **AI Study Assistant (`/assistant`):** Preserved concept exploration interface.
+- **Dedicated Document Library (`/materials`):** Added to `DashboardLayout` sidebar navigation and route table.
 
 ---
 
-## 2. What Was Added in Phase 2 — Step 1
+## 2. Phase 2 Step 2: Implementation Details
 
-In Step 1, the foundational full-stack backend and database architecture were created and verified without breaking any existing Phase 1 UI:
+### A. Real Document Upload & Validation
+- **Supported Formats:** PDF (`.pdf`), Microsoft Word (`.docx`), and Plain Text (`.txt`).
+- **File Validation:**
+  - Client-side size & extension pre-flight checks.
+  - Backend extension normalization (`.pdf`, `.docx`, `.txt`).
+  - Strict 10 MB file size enforcement (returns HTTP 413 if exceeded).
+  - Empty file detection (rejects 0-byte uploads with HTTP 400).
+  - Binary header signature / magic bytes verification:
+    - PDF: Verifies `%PDF-` header magic bytes.
+    - DOCX: Verifies `PK\x03\x04` ZIP archive signature and confirms existence of `word/document.xml`.
+    - TXT: Verifies multi-encoding readability (UTF-8, Latin-1, CP1252) and detects binary null bytes.
+- **Safe Disk Storage:**
+  - Original files are stored in `backend/uploads/` using generated UUID filenames (`<uuid4>.<ext>`).
+  - User-supplied file paths are never trusted or executed directly.
 
-1. **Python FastAPI Backend (`backend/`):**
-   - Clean architectural structure:
-     - Entry point: `backend/main.py`
-     - Configuration: `backend/app/config.py` (reads `.env`, configures CORS & DB URL)
-     - Database connection: `backend/app/database.py` (SessionLocal, get_db dependency, health check)
-     - Database models: `backend/app/models/` (SQLAlchemy 2.0 ORM models)
-     - Schemas: `backend/app/schemas/` (Pydantic v2 validation models)
-     - Routers: `backend/app/routers/health.py` (`GET /api/health`)
-     - Services: `backend/app/services/` (prepared for Step 2+ business logic)
-     - Tests: `backend/tests/test_health.py` (automated Pytest suite)
+### B. Text Extraction Engine (`backend/app/services/document_processor.py`)
+- **PDF Extraction:**
+  - Uses `pypdf` / `PyMuPDF` with per-page text stream aggregation.
+  - Detects PDFs with no extractable text layer (e.g. scanned image PDFs) and flags them with status `empty_text`.
+- **DOCX Extraction:**
+  - Uses `python-docx` to extract all paragraph text and tabular cell data.
+- **TXT Extraction:**
+  - Multi-encoding decoding with whitespace normalization.
+- **Whitespace Cleaner:** Cleans excessive blank lines and normalizes carriage returns.
 
-2. **Database Engine & Initial Schema (`backend/edumind.db`):**
-   - Configured SQLite for local development (`DATABASE_URL=sqlite:///./edumind.db`).
-   - Prepared and initialized 7 core relational tables:
-     - `learning_materials`: Stores learning files, uploaded notes, and extracted texts.
-     - `quizzes`: Quizzes associated with subjects and optional learning materials.
-     - `quiz_questions`: Questions with options (JSON), correct index, explanations, and tags.
-     - `quiz_attempts`: Tracks learner quiz sessions, timings, and overall scores.
-     - `learner_responses`: Stores per-question selections and correctness per attempt.
-     - `competency_results`: Learner topic-level competency scores and mastery levels.
-     - `personalized_recommendations`: Actionable learning suggestions based on competency gaps.
+### C. Database Persistence & Models
+- Extended `LearningMaterial` model in `backend/app/models/material.py` with:
+  - `storage_path`: Relative safe path to uploaded file on disk.
+  - `extracted_char_count`: Character length of clean extracted text.
+  - `error_message`: Informative diagnostic text if parsing encounters warnings.
+- SQLite migration handler added to `init_db()` to automatically add missing columns to existing SQLite databases without data loss.
 
-3. **Live Health & Diagnostic API (`GET /api/health`):**
-   - Live endpoint that actively tests database connectivity (`SELECT 1`).
-   - Returns service status (`healthy` / `degraded`), project metadata, engine status, and UTC timestamp.
-   - Tested and verified: HTTP 200 with JSON payload.
+### D. Implemented API Endpoints
 
-4. **Frontend-Backend Bridge Configuration:**
-   - Created `src/services/api.js`: Shared resilient API client with `checkBackendHealth()` and `apiRequest()`.
-   - Updated `vite.config.js`: Added dev server proxy for `/api` pointing to `http://127.0.0.1:8000`.
-   - Created `.env.example` in both frontend root and `backend/`.
+| Method | Endpoint | Description | Status Code |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/materials/upload` | Uploads file via `multipart/form-data`, validates, extracts text, persists in DB | `201 Created` |
+| `GET` | `/api/materials` | Lists all uploaded documents with metadata (sorted by latest) | `200 OK` |
+| `GET` | `/api/materials/{id}` | Returns metadata details for specific document | `200 OK` / `404` |
+| `GET` | `/api/materials/{id}/content` | Returns full extracted text content | `200 OK` / `404` |
+| `DELETE` | `/api/materials/{id}` | Safely deletes record from SQLite and removes file from disk | `200 OK` / `404` |
+| `GET` | `/api/health` | Health and database connectivity status check | `200 OK` |
 
-5. **Automated Verification:**
-   - Automated Pytest suite (`backend/tests/test_health.py`): 3/3 tests passed.
-   - Production frontend build test (`cmd /c npm run build`): Completed in 4.28s with 0 errors.
-
----
-
-## 3. Which Existing Features Are Working
-
-| Component / Feature | Status | Verification Detail |
-| :--- | :--- | :--- |
-| **Frontend UI & Navigation** | Operational | All 10 routes compile and render cleanly in Vite |
-| **Phase 1 Quiz Engine** | Operational | In-memory interactive quiz flow remains 100% functional |
-| **FastAPI Backend Server** | Operational | Starts cleanly via Uvicorn on port 8000 |
-| **Health API (`/api/health`)** | Operational | Returns HTTP 200 with live SQLite connection check |
-| **Database Schema Initialization** | Operational | 7 tables created in `backend/edumind.db` |
-| **Automated Tests** | Operational | 3/3 tests passed in `backend/tests/test_health.py` |
-| **Frontend Production Build** | Operational | Clean build (`vite build`) without broken imports or syntax errors |
-
----
-
-## 4. Which Planned Features Are Not Yet Implemented (By Scope)
-
-In accordance with strict Step 1 scoping instructions, the following capabilities are reserved for subsequent steps:
-
-- [ ] Material upload endpoint (`POST /api/materials/upload`) and text extraction.
-- [ ] AI Quiz generation engine (generating MCQs from uploaded notes / topics).
-- [ ] Quiz submission API (`POST /api/quizzes/{id}/attempt`) storing attempts in database.
-- [ ] Competency scoring algorithm (calculating mastery percentages per topic).
-- [ ] Personalized learning recommendation engine.
-- [ ] Frontend integration with persistent quiz endpoints.
-- [ ] Authentication / user session management.
+### E. Frontend Integration
+- **`src/services/api.js`:** Added `getMaterials()`, `uploadMaterial()`, `getMaterialDetails()`, `getMaterialContent()`, `deleteMaterial()`.
+- **`src/components/LearningMaterialsManager.jsx`:**
+  - Drag-and-drop & file picker zone.
+  - Target subject selector (`CS301`, `CS303`, `CS304`, etc.) and custom title input.
+  - Live progress state during text extraction.
+  - Document repository list with character counts, file size badges, and status indicators.
+  - Interactive **Text Preview Modal** with full extracted text reader and clipboard copying.
+  - Secure **Delete Confirmation** flow.
+- **`src/pages/MaterialsPage.jsx`:** Dedicated document library page.
+- **Embedded in `Dashboard.jsx`:** Accessible directly from student dashboard.
+- **Vite Proxy:** Transparent dev routing for `/api` requests to backend on port 8000.
 
 ---
 
-## 5. Blockers or Compatibility Issues
+## 3. Verification & Automated Test Results
 
-- **Execution Policy on Windows PowerShell:**
-  - Running `npm` directly inside standard PowerShell triggers Windows script execution policy restrictions on `npm.ps1`.
-  - **Resolution:** Use `cmd /c npm ...` or `npm.cmd` when executing npm commands.
-- **Python Launcher:**
-  - `python` command targets Microsoft Store alias on this Windows environment.
-  - **Resolution:** Use `py` or `py -m uvicorn ...` which invokes Python 3.14.6 directly.
+Automated test suite executed via `py -m pytest backend/tests -v`:
+- **Total Tests:** 14 tests
+- **Passed:** 14 passed (100% pass rate) in 1.33 seconds
+- **Key Test Cases Verified:**
+  1. `test_root_endpoint`: PASSED
+  2. `test_health_endpoint`: PASSED
+  3. `test_database_tables_created`: PASSED
+  4. `test_upload_pdf_success`: PASSED (Real in-memory binary PDF uploaded & text verified)
+  5. `test_upload_docx_success`: PASSED (Real in-memory binary DOCX uploaded & paragraphs verified)
+  6. `test_upload_txt_success`: PASSED (Real TXT file uploaded & text verified)
+  7. `test_reject_unsupported_file_extension`: PASSED (Rejected `.exe` with HTTP 400)
+  8. `test_reject_empty_file`: PASSED (Rejected 0-byte file with HTTP 400)
+  9. `test_reject_oversized_file`: PASSED (Rejected > 10 MB payload with HTTP 413)
+  10. `test_reject_corrupted_signature_pdf`: PASSED (Rejected invalid header with HTTP 400)
+  11. `test_list_materials`: PASSED (Returned persisted records)
+  12. `test_get_material_detail_and_content`: PASSED (Returned extracted text)
+  13. `test_get_nonexistent_material_returns_404`: PASSED (Returned HTTP 404)
+  14. `test_delete_material`: PASSED (Removed database row and verified subsequent 404)
+- **Frontend Production Build:** `cmd /c npm run build` completed in 6.94s with 0 errors.
 
 ---
 
-## 6. What Step 2 Should Implement Next
+## 4. Known Limitations & Roadmap for Step 3
 
-1. **Learning Material Ingestion Service:**
-   - Implement file upload API (`POST /api/materials/upload`) supporting PDF / TXT / DOCX.
-   - Extract raw text and persist metadata to the `learning_materials` database table.
-2. **Material Retrieval Routes:**
-   - Implement `GET /api/materials` and `GET /api/materials/{id}`.
-3. **Frontend Material Upload Component:**
-   - Add a lightweight, non-destructive upload interface in the frontend connecting to the backend.
+### Known Limitations
+- OCR for image-only/scanned PDFs is not yet included; scanned PDFs lacking text streams are honestly flagged as `empty_text`.
+- Authentication is currently using student demo mode without JWT session tokens.
+
+### Next Step: Phase 2 Step 3 Roadmap
+1. **AI Question Generation Service:** Generating chapter/topic MCQs from extracted text content stored in `learning_materials`.
+2. **Quiz Linking:** Linking generated quizzes to specific learning materials (`material_id` FK).
+3. **Assessment Execution:** Connecting generated quizzes to the interactive quiz player.

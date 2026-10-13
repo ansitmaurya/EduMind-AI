@@ -4,6 +4,7 @@ import {
   Sparkles,
   LayoutDashboard,
   BookOpen,
+  FileText,
   Bot,
   Zap,
   BarChart3,
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }) {
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'My Subjects', path: '/subjects', icon: BookOpen },
+    { label: 'Materials', path: '/materials', icon: FileText },
     { label: 'AI Assistant', path: '/assistant', icon: Bot },
     { label: 'Quizzes', path: '/quizzes', icon: Zap },
     { label: 'Progress', path: '/progress', icon: BarChart3 },
