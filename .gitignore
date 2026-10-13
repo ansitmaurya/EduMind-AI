@@ -1,0 +1,76 @@
+# ==============================================================================
+# EduMind AI — Git Ignore Rules
+# ==============================================================================
+
+# 1. Environment & Secret Configuration Files
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+
+# 2. Database & Data Storage
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+backend/edumind.db
+backend/edumind.db*
+
+# 3. User Uploaded Documents (Keep folder structure via .gitkeep)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# 4. Python Environment & Cache
+__pycache__/
+*/__pycache__/
+*/**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 5. Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# 6. Node / Frontend Dependencies & Production Build
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 7. IDE & OS Temporary Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

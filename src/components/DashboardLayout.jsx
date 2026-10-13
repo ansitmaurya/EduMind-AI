@@ -16,7 +16,8 @@ import {
   X,
   Search,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Target
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
@@ -31,7 +32,7 @@ export default function DashboardLayout({ children }) {
     { label: 'Materials', path: '/materials', icon: FileText },
     { label: 'AI Assistant', path: '/assistant', icon: Bot },
     { label: 'Quizzes', path: '/quizzes', icon: Zap },
-    { label: 'Progress', path: '/progress', icon: BarChart3 },
+    { label: 'Competency & Progress', path: '/progress', icon: Target },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 

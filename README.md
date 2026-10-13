@@ -1,1 +1,296 @@
-# EduMind-AI
+# EduMind AI
+
+**AI-Enabled Learning Platform for Competency Assessment, Personalized Training and Quiz Generation**
+
+EduMind AI is a full-stack educational companion built for the **Smart Education** theme of the **Smart India Hackathon**. It helps students bridge the gap between syllabus study materials and effective exam preparation by providing automated question generation, secure quiz assessments, competency gap analysis, and personalized learning recommendations grounded in their own uploaded notes.
+
+---
+
+## Table of Contents
+
+1. [What EduMind AI Does](#what-edumind-ai-does)
+2. [Main Features](#main-features)
+3. [Technology Stack](#technology-stack)
+4. [Project Folder Structure](#project-folder-structure)
+5. [Prerequisites](#prerequisites)
+6. [Installation & Setup](#installation--setup)
+7. [Environment Configuration](#environment-configuration)
+8. [Starting Backend and Frontend](#starting-backend-and-frontend)
+9. [Running Tests & Build Verification](#running-tests--build-verification)
+10. [API Reference](#api-reference)
+11. [Deployment & Database Persistence](#deployment--database-persistence)
+12. [Current Limitations & Roadmap](#current-limitations--roadmap)
+
+---
+
+## What EduMind AI Does
+
+Traditional exam preparation often leaves students guessing which syllabus concepts they have mastered and where their critical knowledge gaps lie. **EduMind AI** provides a complete end-to-end workflow:
+
+1. **Uploads Learning Materials:** Students upload syllabi, lecture slides, or textbook summaries (PDF, DOCX, TXT).
+2. **Extracts Knowledge Content:** Text is extracted, validated, and persisted with metadata.
+3. **Generates Tailored Quizzes:** AI models or an offline NLP Knowledge Engine generate multiple-choice assessments from the uploaded material.
+4. **Conducts Secure Assessments:** Students attempt quizzes with server-side timer tracking and strict protection of correct answers.
+5. **Evaluates & Explains Results:** Submissions are scored immediately on the server, preventing duplicate attempts, and detailed explanations are provided for every question.
+6. **Maps Competency Gaps:** The system tracks performance across topics to identify strengths and weaknesses.
+7. **Recommends Personalized Next Steps:** For any identified gaps, EduMind AI suggests specific sections from the student's uploaded notes to review before retaking practice quizzes.
+
+---
+
+## Main Features
+
+- 📄 **Multi-Format Document Upload:** Ingest PDF, DOCX, and TXT documents up to 10 MB with automated text extraction and character counting.
+- ⚡ **Dual-Mode Quiz Generator:** Generates MCQs using Gemini / OpenAI when API keys are configured, or seamlessly falls back to an internal offline NLP Knowledge Engine without paid dependencies.
+- 🔒 **Secure Quiz Attempt Lifecycle:** Correct answers and explanations remain hidden on the server until final submission; duplicate submissions are blocked with HTTP 400.
+- 📊 **Server-Side Scoring & History:** Calculates overall score percentage, correct/incorrect/unanswered counts, and stores chronological attempt history in SQLite.
+- 🎯 **Quantitative Competency Gap Analysis:** Categorizes topics into **Mastered** ($\ge 75\%$), **Developing** ($50\% - 74\%$), **Needs Improvement** ($< 50\%$), and **Insufficient Data** ($< 3$ questions evaluated).
+- 💡 **Personalized Study Recommendations:** Highlights weak topics with HIGH or MEDIUM priority badges and links directly to matching uploaded documents in the library.
+- 🤖 **Interactive AI Doubt Assistant:** In-browser conversational interface to break down difficult concepts and explain tricky questions.
+- 📱 **Modern & Responsive UI:** Clean glassmorphism aesthetic built with React, Lucide icons, and modern responsive layouts for both laptop and mobile screens.
+
+---
+
+## Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, Vite 6, React Router DOM 7, Lucide React, Vanilla CSS Design System |
+| **Backend API** | FastAPI 0.115+, Uvicorn (ASGI), Python 3.10+ |
+| **Database** | SQLite with SQLAlchemy 2.0 ORM |
+| **Document Processing** | `pypdf` 5.3+, `python-docx` 1.1+ |
+| **Testing** | `pytest` 8.3+, `fastapi.testclient`, `httpx` |
+| **Environment** | `python-dotenv` |
+
+---
+
+## Project Folder Structure
+
+```text
+EduMind-AI/
+├── .env.example                     # Root frontend environment template
+├── .gitignore                        # Git exclusion rules (env, db, uploads, node_modules)
+├── index.html                       # HTML5 entry point
+├── package.json                     # Frontend dependencies & scripts
+├── vite.config.js                   # Vite bundler configuration & proxy
+├── PHASE2_PROGRESS.md               # Step-by-step progress tracking
+├── README.md                        # Platform documentation (this file)
+│
+├── backend/                         # FastAPI Phase 2 Backend
+│   ├── .env.example                 # Backend environment template
+│   ├── edumind.db                   # SQLite database (persisted)
+│   ├── main.py                      # FastAPI application entry point & lifespan
+│   ├── requirements.txt             # Python dependencies
+│   ├── app/
+│   │   ├── config.py                # Pydantic/dataclass application settings
+│   │   ├── database.py              # SQLite engine & session management
+│   │   ├── models/                  # SQLAlchemy ORM models
+│   │   │   ├── material.py          # LearningMaterial model
+│   │   │   ├── quiz.py              # Quiz, QuizQuestion models
+│   │   │   ├── attempt.py           # QuizAttempt, LearnerResponse models
+│   │   │   └── competency.py        # CompetencyResult, PersonalizedRecommendation
+│   │   ├── schemas/                 # Pydantic request/response schemas
+│   │   │   ├── health.py            # Diagnostic health check schema
+│   │   │   ├── material.py          # Document upload & listing schemas
+│   │   │   ├── quiz.py              # Quiz generation & attempt schemas
+│   │   │   └── competency.py        # Competency analysis & recommendation schemas
+│   │   ├── routers/                 # FastAPI API route controllers
+│   │   │   ├── health.py            # /api/health & /health
+│   │   │   ├── materials.py         # /api/materials/*
+│   │   │   ├── quizzes.py           # /api/quizzes/*
+│   │   │   ├── attempts.py          # /api/attempts/*
+│   │   │   └── competency.py        # /api/competencies, /api/recommendations
+│   │   └── services/                # Core business logic engines
+│   │       ├── document_processor.py # PDF/DOCX/TXT text extraction
+│   │       ├── quiz_generator.py    # AI provider + local NLP fallback generator
+│   │       └── competency_analyzer.py # Gap evaluation & note-matching engine
+│   ├── tests/                       # Automated pytest suite
+│   │   ├── test_health.py           # Health endpoint and DB table verification
+│   │   ├── test_materials.py        # Document upload & extraction tests
+│   │   ├── test_quiz_generator.py   # Quiz generation and validation tests
+│   │   ├── test_attempts.py         # Answer protection, scoring & duplicate checks
+│   │   ├── test_competencies.py     # Competency analysis & recommendation tests
+│   │   └── test_full_workflow.py    # 12-step end-to-end user workflow test
+│   └── uploads/                     # Storage directory for uploaded documents
+│       └── .gitkeep                 # Preserves folder in git
+│
+└── src/                             # React Frontend Source
+    ├── App.jsx                      # Client router configuration
+    ├── main.jsx                     # React root mount
+    ├── components/                  # Reusable UI components
+    │   ├── Navbar.jsx               # Top navigation bar
+    │   ├── Footer.jsx               # Platform footer
+    │   ├── DashboardLayout.jsx      # Sidebar & app layout wrapper
+    │   ├── LearningMaterialsManager.jsx # Document upload & preview UI
+    │   ├── QuizGeneratorSection.jsx # Quiz generation controls
+    │   ├── AiChatModal.jsx          # Quick doubt modal
+    │   └── SubjectCard.jsx          # Curriculum subject display card
+    ├── pages/                       # Application pages
+    │   ├── Landing.jsx              # Public landing page (/)
+    │   ├── Dashboard.jsx            # Learner dashboard (/dashboard)
+    │   ├── MaterialsPage.jsx        # Document library (/materials)
+    │   ├── QuizzesPage.jsx          # Smart quiz hub & attempt runner (/quizzes)
+    │   ├── ProgressPage.jsx         # Competency gap hub (/progress)
+    │   ├── SubjectsPage.jsx         # Subject curricula tracks (/subjects)
+    │   ├── AiAssistantPage.jsx      # Full-page AI study assistant (/assistant)
+    │   ├── ProfilePage.jsx          # Student profile view (/profile)
+    │   ├── SettingsPage.jsx         # User preferences (/settings)
+    │   ├── Login.jsx                # Student login page (/login)
+    │   └── SignUp.jsx               # Registration page (/signup)
+    ├── services/
+    │   └── api.js                   # Unified backend API client
+    └── styles/
+        └── index.css                # Custom design system CSS
+```
+
+---
+
+## Prerequisites
+
+Before running EduMind AI locally, ensure you have:
+
+1. **Python:** Version 3.10 or higher (`python --version` or `py --version`).
+2. **Node.js:** Version 18.0 or higher (`node --version`).
+3. **npm:** Version 9.0 or higher (`npm --version`).
+
+---
+
+## Installation & Setup
+
+### 1. Clone or Open the Repository
+```bash
+cd EduMind-AI
+```
+
+### 2. Set Up Backend Dependencies
+```bash
+cd backend
+py -m pip install -r requirements.txt
+cd ..
+```
+*(On macOS/Linux, replace `py` with `python3`)*
+
+### 3. Set Up Frontend Dependencies
+```bash
+npm install
+```
+
+---
+
+## Environment Configuration
+
+EduMind AI works out of the box using default local configuration, but environment templates are provided for customization:
+
+### Backend Configuration (`backend/.env`)
+Copy `backend/.env.example` to `backend/.env`:
+```bash
+cp backend/.env.example backend/.env
+```
+Default values:
+```env
+APP_ENV=development
+APP_HOST=127.0.0.1
+APP_PORT=8000
+DATABASE_URL=sqlite:///./edumind.db
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+MAX_UPLOAD_SIZE_BYTES=10485760
+
+# Optional AI API keys (leave blank to use the built-in offline NLP engine)
+# GEMINI_API_KEY=your_gemini_key_here
+# OPENAI_API_KEY=your_openai_key_here
+```
+
+### Frontend Configuration (`.env`)
+If your backend runs on a different port or domain, copy `.env.example` to `.env` in the root:
+```bash
+cp .env.example .env
+```
+```env
+VITE_API_URL=http://127.0.0.1:8000/api
+```
+
+---
+
+## Starting Backend and Frontend
+
+### 1. Start the FastAPI Backend
+From the repository root:
+```bash
+py -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+- Interactive API Documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- Alternative API Documentation: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- Health Check: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+
+### 2. Start the Vite Frontend
+In a separate terminal from the repository root:
+```bash
+npm run dev
+```
+Open your browser and navigate to:
+- Application URL: [http://localhost:3000](http://localhost:3000)
+
+---
+
+## Running Tests & Build Verification
+
+### Backend Automated Test Suite
+Run the 36 automated tests covering API endpoints, answer protection, document processing, scoring, and the 12-step end-to-end workflow:
+```bash
+py -m pytest backend/tests -v
+```
+
+### Frontend Production Build
+Validate that all React components, icons, and CSS modules build without errors:
+```bash
+npm run build
+```
+To preview the compiled production build:
+```bash
+npm run preview
+```
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Platform metadata and health pointers |
+| `GET` | `/health` | Direct root health check (for cloud load balancers) |
+| `GET` | `/api/health` | Comprehensive backend & database diagnostic check |
+| `POST` | `/api/materials/upload` | Upload & extract text from PDF, DOCX, or TXT file |
+| `GET` | `/api/materials` | List all saved learning materials |
+| `GET` | `/api/materials/{id}` | Get document metadata by ID |
+| `GET` | `/api/materials/{id}/content` | Get extracted text content for a document |
+| `DELETE` | `/api/materials/{id}` | Delete a document and its file from disk |
+| `POST` | `/api/quizzes/generate` | Generate an MCQ assessment from material text |
+| `GET` | `/api/quizzes` | List all saved generated quizzes |
+| `GET` | `/api/quizzes/{id}` | Retrieve full quiz structure and questions |
+| `POST` | `/api/quizzes/{id}/attempts` | Start a quiz attempt (correct answers protected) |
+| `POST` | `/api/attempts/{id}/submit` | Submit answers for scoring (duplicate prevention) |
+| `GET` | `/api/attempts/{id}/result` | Retrieve evaluation results with explanations |
+| `GET` | `/api/attempts` | Retrieve chronological attempt history |
+| `GET` | `/api/competencies` | Retrieve topic-level competency gap analysis |
+| `GET` | `/api/recommendations` | Retrieve personalized recommendations mapped to notes |
+
+---
+
+## Deployment & Database Persistence
+
+### Database Persistence Requirements
+EduMind AI uses SQLite stored at `backend/edumind.db`.
+- **Local Development:** Data persists automatically in the file system.
+- **Docker / Container Deployments:** Mount a persistent volume to the directory containing `backend/edumind.db` and `backend/uploads/` (e.g., `-v /var/data/edumind:/app/backend/data`).
+- **Cloud Hosts (Render, Railway, Fly.io):** Attach a persistent volume or set `DATABASE_URL` to point to a persistent storage path or PostgreSQL instance.
+
+### Production Build & Launch Commands
+1. **Frontend Production Build:** `npm run build` (outputs optimized bundle to `dist/`)
+2. **Backend Startup:** `uvicorn backend.main:app --host 0.0.0.0 --port 8000`
+
+---
+
+## Current Limitations & Roadmap
+
+1. **Authentication:** Currently operates with a single default learner profile (`student_default`). Multi-user authentication with JWT/OAuth2 and role-based access control is planned for future phases.
+2. **External AI Integration:** Quiz generation automatically leverages Gemini or OpenAI when keys are supplied, but gracefully defaults to an internal offline NLP engine if no external API key is provided.
+3. **Supported Formats:** Currently extracts text from `.pdf`, `.docx`, and `.txt`. Scanned image-only PDFs requiring OCR are not yet supported without Tesseract.

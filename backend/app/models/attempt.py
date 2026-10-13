@@ -16,9 +16,11 @@ class QuizAttempt(Base):
         nullable=False
     )
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(50), default="in_progress", nullable=False)  # 'in_progress', 'completed'
     total_questions = Column(Integer, default=0, nullable=False)
     attempted_count = Column(Integer, default=0, nullable=False)
     correct_count = Column(Integer, default=0, nullable=False)
+    unanswered_count = Column(Integer, default=0, nullable=False)
     score_percentage = Column(Float, default=0.0, nullable=False)
     time_taken_seconds = Column(Integer, default=0, nullable=False)
     feedback_summary = Column(Text, nullable=True)

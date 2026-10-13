@@ -8,6 +8,7 @@ class Quiz(Base):
     __tablename__ = "quizzes"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(String(100), default="student_default", nullable=False, index=True)
     material_id = Column(Integer, ForeignKey("learning_materials.id", ondelete="SET NULL"), nullable=True, index=True)
     title = Column(String(255), nullable=False, index=True)
     subject_code = Column(String(50), nullable=False, index=True)

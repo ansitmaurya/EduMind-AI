@@ -8,6 +8,7 @@ class LearningMaterial(Base):
     __tablename__ = "learning_materials"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(String(100), default="student_default", nullable=False, index=True)
     title = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     subject_code = Column(String(50), nullable=False, index=True)

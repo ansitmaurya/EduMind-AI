@@ -44,6 +44,11 @@ class Settings:
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
     ALLOWED_EXTENSIONS: set[str] = {"pdf", "docx", "txt"}
 
+    # Authentication & JWT Configuration
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "edumind-academic-security-token-2026-secret-key")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
+
 
 settings = Settings()
 # Ensure upload directory exists

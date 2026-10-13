@@ -161,6 +161,120 @@ export async function deleteMaterial(id) {
   return apiRequest(`/materials/${id}`, { method: 'DELETE' });
 }
 
+/**
+ * Generates an MCQ quiz from an uploaded learning material.
+ * 
+ * @param {object} payload - { material_id, title, topic, num_questions, difficulty }
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function generateQuiz(payload) {
+  return apiRequest('/quizzes/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Lists generated quizzes from backend SQLite database.
+ * 
+ * @param {object} [params={}] - Optional filters { material_id, subject_code }
+ * @returns {Promise<{ success: boolean, data?: Array, error?: string }>}
+ */
+export async function getQuizzes(params = {}) {
+  const queryParts = [];
+  if (params.material_id) queryParts.push(`material_id=${encodeURIComponent(params.material_id)}`);
+  if (params.subject_code) queryParts.push(`subject_code=${encodeURIComponent(params.subject_code)}`);
+  const query = queryParts.length ? `?${queryParts.join('&')}` : '';
+  return apiRequest(`/quizzes${query}`, { method: 'GET' });
+}
+
+/**
+ * Retrieves full quiz structure and questions by ID.
+ * 
+ * @param {number|string} id - Quiz ID
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getQuizById(id) {
+  return apiRequest(`/quizzes/${id}`, { method: 'GET' });
+}
+
+/**
+ * Starts a new quiz attempt on the backend.
+ * Protects answers: does not return correct answers or explanations.
+ * 
+ * @param {number|string} quizId - Quiz ID
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function startQuizAttempt(quizId) {
+  return apiRequest(`/quizzes/${quizId}/attempts`, {
+    method: 'POST'
+  });
+}
+
+/**
+ * Submits learner responses for server-side evaluation.
+ * 
+ * @param {number|string} attemptId - Attempt ID
+ * @param {object} submissionData - { responses: [{ question_id, selected_index }], time_taken_seconds }
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function submitQuizAttempt(attemptId, submissionData) {
+  return apiRequest(`/attempts/${attemptId}/submit`, {
+    method: 'POST',
+    body: JSON.stringify(submissionData)
+  });
+}
+
+/**
+ * Retrieves the saved evaluation result for a completed quiz attempt.
+ * 
+ * @param {number|string} attemptId - Attempt ID
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getAttemptResult(attemptId) {
+  return apiRequest(`/attempts/${attemptId}/result`, {
+    method: 'GET'
+  });
+}
+
+/**
+ * Retrieves user's quiz attempt history.
+ * 
+ * @param {object} [params={}] - Optional filters { quiz_id, limit }
+ * @returns {Promise<{ success: boolean, data?: Array, error?: string }>}
+ */
+export async function getAttemptHistory(params = {}) {
+  const queryParts = [];
+  if (params.quiz_id) queryParts.push(`quiz_id=${encodeURIComponent(params.quiz_id)}`);
+  if (params.limit) queryParts.push(`limit=${encodeURIComponent(params.limit)}`);
+  const query = queryParts.length ? `?${queryParts.join('&')}` : '';
+  return apiRequest(`/attempts${query}`, { method: 'GET' });
+}
+
+/**
+ * Retrieves topic-level competency gap analysis from actual quiz attempts.
+ * 
+ * @param {string} [userId='student_default'] - Learner identifier
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getCompetencies(userId = 'student_default') {
+  return apiRequest(`/competencies?user_id=${encodeURIComponent(userId)}`, {
+    method: 'GET'
+  });
+}
+
+/**
+ * Retrieves personalized learning recommendations tied to identified competency gaps.
+ * 
+ * @param {string} [userId='student_default'] - Learner identifier
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getRecommendations(userId = 'student_default') {
+  return apiRequest(`/recommendations?user_id=${encodeURIComponent(userId)}`, {
+    method: 'GET'
+  });
+}
+
 export default {
   API_BASE_URL,
   checkBackendHealth,
@@ -169,5 +283,15 @@ export default {
   uploadMaterial,
   getMaterialDetails,
   getMaterialContent,
-  deleteMaterial
+  deleteMaterial,
+  generateQuiz,
+  getQuizzes,
+  getQuizById,
+  startQuizAttempt,
+  submitQuizAttempt,
+  getAttemptResult,
+  getAttemptHistory,
+  getCompetencies,
+  getRecommendations
 };
+

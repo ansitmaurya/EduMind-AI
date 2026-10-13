@@ -5,6 +5,10 @@ from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.routers.health import router as health_router
 from backend.app.routers.materials import router as materials_router
+from backend.app.routers.quizzes import router as quizzes_router
+from backend.app.routers.attempts import router as attempts_router
+from backend.app.routers.competency import router as competency_router
+from backend.app.routers.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -37,7 +41,12 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(health_router, prefix="/api")
+app.include_router(health_router)  # Also expose /health for cloud platforms & container healthchecks
 app.include_router(materials_router, prefix="/api")
+app.include_router(quizzes_router, prefix="/api")
+app.include_router(attempts_router, prefix="/api")
+app.include_router(competency_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])

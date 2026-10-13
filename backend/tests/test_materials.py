@@ -16,6 +16,10 @@ def setup_db():
 @pytest.fixture
 def client():
     with TestClient(app) as c:
+        res = c.post("/api/auth/login", json={"email": "alex@example.com", "password": "student123"})
+        if res.status_code == 200:
+            token = res.json()["access_token"]
+            c.headers["Authorization"] = f"Bearer {token}"
         yield c
 
 

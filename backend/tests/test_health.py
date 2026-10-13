@@ -41,6 +41,15 @@ def test_health_endpoint(client):
     assert "timestamp" in data
 
 
+def test_direct_root_health_endpoint(client):
+    """Test the root /health endpoint for external monitoring and load balancers."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["database"]["status"] == "connected"
+
+
 def test_database_tables_created():
     """Verify that all core tables were successfully created in SQLite."""
     inspector = inspect(engine)

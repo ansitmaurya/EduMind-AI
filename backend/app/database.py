@@ -74,6 +74,8 @@ def init_db() -> None:
             cursor.execute("PRAGMA table_info(learning_materials)")
             existing_cols = {row[1] for row in cursor.fetchall()}
             if existing_cols:
+                if "user_id" not in existing_cols:
+                    cursor.execute("ALTER TABLE learning_materials ADD COLUMN user_id VARCHAR(100) DEFAULT 'student_default'")
                 if "storage_path" not in existing_cols:
                     cursor.execute("ALTER TABLE learning_materials ADD COLUMN storage_path VARCHAR(500)")
                 if "extracted_char_count" not in existing_cols:
@@ -84,10 +86,40 @@ def init_db() -> None:
 
             cursor.execute("PRAGMA table_info(quizzes)")
             existing_quiz_cols = {row[1] for row in cursor.fetchall()}
-            if existing_quiz_cols and "generation_mode" not in existing_quiz_cols:
-                cursor.execute("ALTER TABLE quizzes ADD COLUMN generation_mode VARCHAR(50) DEFAULT 'fallback'")
+            if existing_quiz_cols:
+                if "user_id" not in existing_quiz_cols:
+                    cursor.execute("ALTER TABLE quizzes ADD COLUMN user_id VARCHAR(100) DEFAULT 'student_default'")
+                if "generation_mode" not in existing_quiz_cols:
+                    cursor.execute("ALTER TABLE quizzes ADD COLUMN generation_mode VARCHAR(50) DEFAULT 'fallback'")
+                conn.connection.commit()
+
+            cursor.execute("PRAGMA table_info(quiz_attempts)")
+            existing_attempt_cols = {row[1] for row in cursor.fetchall()}
+            if existing_attempt_cols:
+                if "status" not in existing_attempt_cols:
+                    cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN status VARCHAR(50) DEFAULT 'in_progress'")
+                if "unanswered_count" not in existing_attempt_cols:
+                    cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN unanswered_count INTEGER DEFAULT 0")
                 conn.connection.commit()
     except Exception:
         # Pass if table not created yet or already updated
+        pass
+
+    # Ensure demo user exists for seamless presentation and testing
+    try:
+        from backend.app.services.auth_service import hash_password
+        from backend.app.models.user import User
+        with SessionLocal() as db:
+            demo_user = db.query(User).filter(User.email == "alex@example.com").first()
+            if not demo_user:
+                demo_user = User(
+                    email="alex@example.com",
+                    full_name="Alex",
+                    hashed_password=hash_password("student123"),
+                    is_active=True
+                )
+                db.add(demo_user)
+                db.commit()
+    except Exception:
         pass
 

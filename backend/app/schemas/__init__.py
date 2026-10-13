@@ -2,12 +2,15 @@ from backend.app.schemas.health import HealthResponse, DatabaseStatus
 from backend.app.schemas.material import (
     LearningMaterialBase,
     LearningMaterialCreate,
-    LearningMaterialResponse
+    LearningMaterialResponse,
+    LearningMaterialDetailResponse,
+    LearningMaterialContentResponse,
+    MaterialDeleteResponse
 )
 from backend.app.schemas.quiz import (
-    QuizBase,
-    QuizCreate,
-    QuizResponse,
+    QuizGenerateRequest,
+    QuizSummaryResponse,
+    QuizDetailResponse,
     QuizQuestionBase,
     QuizQuestionCreate,
     QuizQuestionResponse
@@ -16,9 +19,20 @@ from backend.app.schemas.attempt import (
     QuizAttemptCreate,
     QuizAttemptResponse,
     LearnerResponseCreate,
-    LearnerResponseResponse
+    LearnerResponseResponse,
+    ActiveQuizQuestion,
+    QuizAttemptStartResponse,
+    LearnerAnswerSubmission,
+    QuizSubmitRequest,
+    LearnerQuestionReview,
+    QuizAttemptResultResponse,
+    QuizAttemptHistoryItem
 )
 from backend.app.schemas.competency import (
+    TopicCompetencyDetail,
+    CompetencyAnalysisResponse,
+    LearningRecommendationItem,
+    RecommendationsResponse,
     CompetencyResultResponse,
     RecommendationResponse
 )
@@ -29,9 +43,12 @@ __all__ = [
     "LearningMaterialBase",
     "LearningMaterialCreate",
     "LearningMaterialResponse",
-    "QuizBase",
-    "QuizCreate",
-    "QuizResponse",
+    "LearningMaterialDetailResponse",
+    "LearningMaterialContentResponse",
+    "MaterialDeleteResponse",
+    "QuizGenerateRequest",
+    "QuizSummaryResponse",
+    "QuizDetailResponse",
     "QuizQuestionBase",
     "QuizQuestionCreate",
     "QuizQuestionResponse",
@@ -39,6 +56,17 @@ __all__ = [
     "QuizAttemptResponse",
     "LearnerResponseCreate",
     "LearnerResponseResponse",
+    "ActiveQuizQuestion",
+    "QuizAttemptStartResponse",
+    "LearnerAnswerSubmission",
+    "QuizSubmitRequest",
+    "LearnerQuestionReview",
+    "QuizAttemptResultResponse",
+    "QuizAttemptHistoryItem",
+    "TopicCompetencyDetail",
+    "CompetencyAnalysisResponse",
+    "LearningRecommendationItem",
+    "RecommendationsResponse",
     "CompetencyResultResponse",
     "RecommendationResponse"
 ]

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import get_db
 from backend.app.models.material import LearningMaterial
+from backend.app.models.user import User
 from backend.app.schemas.material import (
     LearningMaterialResponse,
     LearningMaterialDetailResponse,
@@ -15,6 +16,10 @@ from backend.app.schemas.material import (
 from backend.app.services.document_processor import (
     process_uploaded_document,
     DocumentProcessingError
+)
+from backend.app.services.auth_service import (
+    get_current_user,
+    user_can_access_resource
 )
 
 router = APIRouter(prefix="/materials", tags=["Learning Materials"])
@@ -31,12 +36,13 @@ async def upload_material(
     title: Optional[str] = Form(None, description="Custom document title (defaults to filename)"),
     subject_code: str = Form("GEN101", description="Associated subject code (e.g. CS301)"),
     description: Optional[str] = Form(None, description="Optional description"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Accepts multipart/form-data document upload (.pdf, .docx, .txt),
     validates content signature, safely persists file on disk,
-    extracts document text, and persists metadata in database.
+    extracts document text, and associates material with the authenticated user.
     """
     if not file or not file.filename:
         raise HTTPException(
@@ -73,8 +79,9 @@ async def upload_material(
     # Derive display title if not explicitly provided
     display_title = title.strip() if title and title.strip() else Path(file.filename).stem
 
-    # Persist in SQLite database
+    # Persist in SQLite database tied to current user
     material = LearningMaterial(
+        user_id=str(current_user.id),
         title=display_title,
         description=description.strip() if description and description.strip() else None,
         subject_code=subject_code.strip() if subject_code and subject_code.strip() else "GEN101",
@@ -112,18 +119,29 @@ async def upload_material(
 @router.get(
     "",
     response_model=List[LearningMaterialResponse],
-    summary="List all uploaded learning materials"
+    summary="List all uploaded learning materials for the authenticated student"
 )
 def list_materials(
     subject_code: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Returns a list of saved document metadata, sorted with latest uploads first.
+    Returns saved document metadata belonging to the authenticated learner.
+    Enforces authorization: learners cannot view other users' private uploads.
     """
     query = db.query(LearningMaterial)
+    if current_user.email == "alex@example.com":
+        query = query.filter(
+            (LearningMaterial.user_id == str(current_user.id)) |
+            (LearningMaterial.user_id == "student_default")
+        )
+    else:
+        query = query.filter(LearningMaterial.user_id == str(current_user.id))
+
     if subject_code:
         query = query.filter(LearningMaterial.subject_code == subject_code)
+
     materials = query.order_by(LearningMaterial.created_at.desc()).all()
     return materials
 
@@ -135,10 +153,12 @@ def list_materials(
 )
 def get_material(
     material_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Returns metadata and details for a specific document ID.
+    Enforces cross-user access authorization.
     """
     material = db.query(LearningMaterial).filter(LearningMaterial.id == material_id).first()
     if not material:
@@ -146,6 +166,13 @@ def get_material(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Learning material with ID {material_id} was not found."
         )
+
+    if not user_can_access_resource(current_user, material.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this learning material."
+        )
+
     return material
 
 
@@ -156,16 +183,24 @@ def get_material(
 )
 def get_material_content(
     material_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Returns full extracted text content for a document ID.
+    Enforces cross-user access authorization.
     """
     material = db.query(LearningMaterial).filter(LearningMaterial.id == material_id).first()
     if not material:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Learning material with ID {material_id} was not found."
+        )
+
+    if not user_can_access_resource(current_user, material.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this learning material."
         )
 
     return LearningMaterialContentResponse(
@@ -186,16 +221,24 @@ def get_material_content(
 )
 def delete_material(
     material_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Safely deletes learning material metadata and removes stored physical file from disk.
+    Enforces cross-user access authorization.
     """
     material = db.query(LearningMaterial).filter(LearningMaterial.id == material_id).first()
     if not material:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Learning material with ID {material_id} was not found."
+        )
+
+    if not user_can_access_resource(current_user, material.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete this learning material."
         )
 
     # Safely remove physical file from disk

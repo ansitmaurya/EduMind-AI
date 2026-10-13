@@ -264,10 +264,10 @@ export default function Landing() {
                   <Sparkles size={26} />
                 </div>
                 <h3>Personalized Learning</h3>
-                <p>Future AI functionality will provide learning suggestions based on student activity.</p>
+                <p>Objective competency gap analysis identifies weak topics and provides targeted study next steps from uploaded notes.</p>
                 <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
                   <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <CheckCircle2 size={14} /> Adaptive Roadmap
+                    <CheckCircle2 size={14} /> Active Gap Analysis
                   </span>
                 </div>
               </div>
