@@ -34,8 +34,8 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchStats() {
       const [compRes, recRes] = await Promise.all([
-        getCompetencies('student_default'),
-        getRecommendations('student_default')
+        getCompetencies(),
+        getRecommendations()
       ]);
       if (compRes.success && compRes.data) {
         setCompetencies(compRes.data);

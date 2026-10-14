@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import { useAuth } from '../context/AuthContext';
 import {
   Settings as SettingsIcon,
   Sun,
@@ -19,6 +20,7 @@ import {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   // 1. Theme State (persists to localStorage & document data-theme)
   const [theme, setTheme] = useState(() => {
@@ -64,7 +66,8 @@ export default function SettingsPage() {
     showToast('Learning configuration saved successfully.');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -316,7 +319,7 @@ export default function SettingsPage() {
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>Student Profile Session</h4>
               <p style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                Signed in as Alex (alex@example.com) • B.Tech Student
+                Signed in as {user?.full_name || 'Learner'} ({user?.email || 'authenticated'}) • B.Tech Student
               </p>
             </div>
 

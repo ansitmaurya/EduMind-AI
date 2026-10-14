@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import { useAuth } from '../context/AuthContext';
 import {
   User,
   Mail,
@@ -21,15 +22,26 @@ import {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // 1. Profile State (Demo frontend-only)
+  // 1. Profile State (populated with authenticated user)
   const [profile, setProfile] = useState({
-    name: 'Alex',
+    name: user?.full_name || 'Student',
     role: 'B.Tech Student',
-    email: 'alex@example.com',
-    course: 'B.Tech',
-    semester: '3rd Semester'
+    email: user?.email || 'student@university.edu',
+    course: 'B.Tech CSE',
+    semester: '6th Semester'
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        name: user.full_name || prev.name,
+        email: user.email || prev.email
+      }));
+    }
+  }, [user]);
 
   // Edit Mode state
   const [isEditing, setIsEditing] = useState(false);

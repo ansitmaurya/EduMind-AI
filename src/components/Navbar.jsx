@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Menu, X, LogIn, ArrowRight } from 'lucide-react';
+import { Sparkles, Menu, X, LogIn, ArrowRight, LogOut, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const isHome = location.pathname === '/';
 
@@ -55,14 +57,29 @@ export default function Navbar() {
 
         {/* Desktop Auth Actions */}
         <div className="nav-actions">
-          <Link to="/login" className="btn btn-secondary btn-sm">
-            <LogIn size={15} />
-            <span>Login</span>
-          </Link>
-          <Link to="/signup" className="btn btn-primary btn-sm">
-            <span>Get Started</span>
-            <ArrowRight size={15} />
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/dashboard" className="btn btn-primary btn-sm">
+                <Sparkles size={15} />
+                <span>Dashboard ({user?.full_name ? user.full_name.split(' ')[0] : 'Learner'})</span>
+              </Link>
+              <button onClick={logout} className="btn btn-secondary btn-sm" title="Log out">
+                <LogOut size={15} />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-secondary btn-sm">
+                <LogIn size={15} />
+                <span>Login</span>
+              </Link>
+              <Link to="/signup" className="btn btn-primary btn-sm">
+                <span>Get Started</span>
+                <ArrowRight size={15} />
+              </Link>
+            </>
+          )}
 
           {/* Mobile Menu Toggle */}
           <button
@@ -91,14 +108,32 @@ export default function Navbar() {
             About
           </a>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
-            <Link to="/login" className="btn btn-secondary" onClick={closeMenu}>
-              <LogIn size={16} />
-              <span>Login</span>
-            </Link>
-            <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>
-              <span>Get Started</span>
-              <ArrowRight size={16} />
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/dashboard" className="btn btn-primary" onClick={closeMenu}>
+                  <span>Open Dashboard</span>
+                </Link>
+                <button
+                  onClick={() => { logout(); closeMenu(); }}
+                  className="btn btn-secondary"
+                  style={{ width: '100%' }}
+                >
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-secondary" onClick={closeMenu}>
+                  <LogIn size={16} />
+                  <span>Sign In</span>
+                </Link>
+                <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>
+                  <span>Create Free Account</span>
+                  <ArrowRight size={16} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

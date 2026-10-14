@@ -52,7 +52,17 @@ export async function checkBackendHealth(timeoutMs = 3000) {
 }
 
 /**
+ * Retrieves the currently stored JWT access token from localStorage.
+ * 
+ * @returns {string|null}
+ */
+export function getAuthToken() {
+  return localStorage.getItem('edumind_token');
+}
+
+/**
  * Resilient API fetch wrapper for backend endpoints.
+ * Automatically injects the JWT Bearer authorization header if available.
  * 
  * @param {string} endpoint - Path relative to API_BASE_URL (e.g., '/materials')
  * @param {RequestInit} [options={}] - Fetch configuration options
@@ -63,9 +73,12 @@ export async function apiRequest(endpoint, options = {}) {
     ? endpoint
     : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
+  const token = getAuthToken();
+
   try {
     const headers = {
       'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.body && !(options.body instanceof FormData)
         ? { 'Content-Type': 'application/json' }
         : {}),
@@ -82,6 +95,13 @@ export async function apiRequest(endpoint, options = {}) {
     const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
+      // If unauthorized and we had a token, session expired or invalidated
+      if (response.status === 401 && token) {
+        localStorage.removeItem('edumind_token');
+        localStorage.removeItem('edumind_user');
+        window.dispatchEvent(new CustomEvent('edumind:unauthorized'));
+      }
+
       return {
         success: false,
         error: (isJson && data?.detail) ? data.detail : `Request failed with status ${response.status}`,
@@ -252,25 +272,77 @@ export async function getAttemptHistory(params = {}) {
 }
 
 /**
- * Retrieves topic-level competency gap analysis from actual quiz attempts.
+ * Registers a new learner account with genuine password hashing.
  * 
- * @param {string} [userId='student_default'] - Learner identifier
+ * @param {object} payload - { full_name, email, password, confirm_password }
  * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
  */
-export async function getCompetencies(userId = 'student_default') {
-  return apiRequest(`/competencies?user_id=${encodeURIComponent(userId)}`, {
+export async function registerUser(payload) {
+  return apiRequest('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Authenticates a registered user and receives a signed JWT access token.
+ * 
+ * @param {object} payload - { email, password }
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function loginUser(payload) {
+  return apiRequest('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Retrieves the currently authenticated user's profile.
+ * 
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getCurrentUser() {
+  return apiRequest('/auth/me', {
+    method: 'GET'
+  });
+}
+
+/**
+ * Invalidate current session and log out the user.
+ * 
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function logoutUser() {
+  return apiRequest('/auth/logout', {
+    method: 'POST'
+  });
+}
+
+/**
+ * Retrieves topic-level competency gap analysis from actual quiz attempts.
+ * If userId is not provided, defaults to the authenticated user's data on the backend.
+ * 
+ * @param {string} [userId] - Optional learner identifier
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function getCompetencies(userId) {
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+  return apiRequest(`/competencies${query}`, {
     method: 'GET'
   });
 }
 
 /**
  * Retrieves personalized learning recommendations tied to identified competency gaps.
+ * If userId is not provided, defaults to the authenticated user's data on the backend.
  * 
- * @param {string} [userId='student_default'] - Learner identifier
+ * @param {string} [userId] - Optional learner identifier
  * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
  */
-export async function getRecommendations(userId = 'student_default') {
-  return apiRequest(`/recommendations?user_id=${encodeURIComponent(userId)}`, {
+export async function getRecommendations(userId) {
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+  return apiRequest(`/recommendations${query}`, {
     method: 'GET'
   });
 }
@@ -279,6 +351,11 @@ export default {
   API_BASE_URL,
   checkBackendHealth,
   apiRequest,
+  getAuthToken,
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  logoutUser,
   getMaterials,
   uploadMaterial,
   getMaterialDetails,

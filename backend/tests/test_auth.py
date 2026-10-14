@@ -23,6 +23,12 @@ def client():
 
 def test_user_registration_success(client):
     """Verifies that a new user can register successfully with valid details."""
+    with SessionLocal() as db:
+        old_user = db.query(User).filter(User.email == "teststudent_reg@university.edu").first()
+        if old_user:
+            db.delete(old_user)
+            db.commit()
+
     payload = {
         "full_name": "Test Student",
         "email": "teststudent_reg@university.edu",
@@ -170,6 +176,17 @@ def test_cross_user_access_denial(client):
     Verifies that User A's private materials, quizzes, and attempt results
     cannot be viewed, modified, or deleted by User B (returns HTTP 403 Forbidden).
     """
+    with SessionLocal() as db:
+        for mail in ["alice_security@college.edu", "bob_security@college.edu"]:
+            u = db.query(User).filter(User.email == mail).first()
+            if u:
+                # also clean up materials belonging to Alice
+                mats = db.query(LearningMaterial).filter(LearningMaterial.user_id == u.id).all()
+                for m in mats:
+                    db.delete(m)
+                db.delete(u)
+        db.commit()
+
     # 1. Register User A (Alice)
     client.post("/api/auth/register", json={
         "full_name": "Alice Learner",

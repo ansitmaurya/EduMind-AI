@@ -47,8 +47,8 @@ export default function ProgressPage() {
     setError(null);
 
     const [compRes, recRes] = await Promise.all([
-      getCompetencies('student_default'),
-      getRecommendations('student_default')
+      getCompetencies(),
+      getRecommendations()
     ]);
 
     setLoading(false);

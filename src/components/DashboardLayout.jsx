@@ -19,10 +19,12 @@ import {
   ChevronRight,
   Target
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function DashboardLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -36,7 +38,8 @@ export default function DashboardLayout({ children }) {
     { label: 'Profile', path: '/profile', icon: User },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -140,7 +143,7 @@ export default function DashboardLayout({ children }) {
               <Menu size={22} />
             </button>
             <div className="header-greeting">
-              <h2>Good Morning, Alex 👋</h2>
+              <h2>Good Morning, {user?.full_name ? user.full_name.split(' ')[0] : 'Student'} 👋</h2>
               <p>Ready to continue your learning journey?</p>
             </div>
           </div>
@@ -182,13 +185,13 @@ export default function DashboardLayout({ children }) {
             </div>
 
             {/* Student Profile Avatar */}
-            <Link to="/profile" className="header-user-profile">
+            <Link to="/profile" className="header-user-profile" title={user?.email || 'Learner Profile'}>
               <div className="user-avatar">
-                <span>A</span>
+                <span>{user?.full_name ? user.full_name.trim().charAt(0).toUpperCase() : 'S'}</span>
               </div>
               <div className="user-info-text">
-                <span className="user-name">Alex</span>
-                <span className="user-role">B.Tech Student</span>
+                <span className="user-name">{user?.full_name || 'Learner'}</span>
+                <span className="user-role">{user?.email || 'Student'}</span>
               </div>
             </Link>
           </div>

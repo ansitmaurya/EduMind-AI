@@ -2,7 +2,7 @@
 
 **Official Title:** AI-Enabled Learning Platform for Competency Assessment, Personalized Training and Quiz Generation  
 **Theme:** Smart Education (Smart India Hackathon)  
-**Current Phase:** Phase 2 — Step 6 Complete (Final Integration, Hardening, and End-to-End Verification)  
+**Current Phase:** Phase 2 — Step 7 Complete (Genuine User Registration, Secure Authentication & Full-Stack Data Separation)  
 **Last Updated:** October 13, 2026  
 
 ---
@@ -19,86 +19,149 @@ EduMind AI is an AI-enabled academic learning companion designed to help learner
 - **Phase 2 Step 4 (Quiz Attempts & Evaluation):** Secure quiz attempt lifecycle (`/api/quizzes/{id}/attempts`, `/api/attempts/{id}/submit`, `/api/attempts/{id}/result`). Strictly protects correct answers prior to submission, performs server-side scoring, prevents duplicate submissions, and logs persistent history.
 - **Phase 2 Step 5 (Competency Gap Analysis & Recommendations):** Quantitative competency gap analysis engine (`/api/competencies`) identifying weak topics (< 50% accuracy) from submitted attempts, coupled with a personalized recommendations engine (`/api/recommendations`) that maps weaknesses back to uploaded library notes.
 - **Phase 2 Step 6 (Final Integration & Hardening):** Full end-to-end 12-step verification, production `.gitignore` configuration, environment template separation (`.env.example`), health endpoint enhancement for cloud load balancers (`/health` & `/api/health`), removal of placeholder stats, and automated E2E test suite.
+- **Phase 2 Step 7 (Genuine Authentication & User Data Separation):** Complete user authentication system with secure registration (`/api/auth/register`), login (`/api/auth/login`), profile (`/api/auth/me`), and logout (`/api/auth/logout`). Implements salted bcrypt hashing, signed JWT Bearer tokens, protected private endpoints with HTTP 401/403 authorization, backward-compatible SQLite migration, and frontend session management with `ProtectedRoute`.
 
 ---
 
-## 2. Phase 2 Step 6: Final Integration & Hardening Details
+## 2. Phase 2 Step 7: Genuine Authentication & Data Separation Architecture
 
-### A. End-to-End 12-Step User Workflow Verification
-The entire user workflow has been verified against active application data via automated tests and live server requests:
-1. **Health Verification:** Tested operational health on `/api/health` and `/health`.
-2. **Document Upload:** Uploaded realistic multi-paragraph DOCX and PDF documents to `/api/materials/upload`.
-3. **Text Extraction:** Verified text extraction, character counting, and content persistence in SQLite.
-4. **Quiz Generation:** Generated a 5-question MCQ quiz from extracted concepts using `/api/quizzes/generate`.
-5. **Secure Attempt Initialization:** Verified `/api/quizzes/{id}/attempts` returns questions and options with `correct_index` and `explanation` hidden from client view.
-6. **Attempt Submission:** Submitted learner responses with recorded duration in seconds.
-7. **Server-Side Evaluation:** Verified score percentage, correct/incorrect/unanswered calculations, and time tracking.
-8. **Result Review & Explanations:** Verified `/api/attempts/{id}/result` provides detailed question reviews, correct answers, and conceptual explanations; verified duplicate resubmission returns HTTP 400.
-9. **Attempt History:** Verified `/api/attempts` returns chronological attempt records.
-10. **Competency Gap Analysis:** Verified `/api/competencies` analyzes question tags and identifies weak topics (< 50% accuracy) as competency gaps.
-11. **Personalized Recommendations:** Verified `/api/recommendations` maps identified gaps to matching uploaded notes in the library and assigns appropriate priority badges.
-12. **Persistence Across Restart:** Killed and restarted the backend Uvicorn daemon and confirmed 100% of stored materials, quizzes, and attempt records remain available without data loss.
+### A. Authentication Architecture
+- **Password Hashing:** Industry-standard **bcrypt** algorithm with 12 salt rounds via direct `bcrypt.hashpw` / `bcrypt.checkpw`. Passwords are never stored in plaintext and never logged.
+- **Session Tokens:** Cryptographically signed **JSON Web Tokens (JWT)** generated using `python-jose` with `HS256` signature algorithm. Includes claims: `sub` (user ID), `email`, and `exp` (1440 minutes / 24 hours).
+- **Transport Security:** Client includes standard `Authorization: Bearer <token>` headers on all authenticated API requests. Handled automatically by the unified frontend API client (`src/services/api.js`).
+- **Session Invalidation:** Logout endpoint (`POST /api/auth/logout`) and client-side cleanup completely remove stored tokens and reset authentication contexts.
+- **Account Enumeration Defense:** Failed login attempts with incorrect passwords or non-existent accounts return the exact same generic error: `"Invalid email or password."` (HTTP 401 Unauthorized), preventing attacker reconnaissance.
 
-### B. Security & Quality Hardening
-- **Root `.gitignore` Created:** Excludes `.env`, `backend/.env`, database files (`*.db`, `*.sqlite`), uploaded user files (`backend/uploads/*` except `.gitkeep`), `__pycache__`, `.pytest_cache`, and `dist/`.
-- **Safe Environment Templates:** Created `.env.example` (root) and `backend/.env.example` containing only safe placeholders. No API keys or credentials are committed.
-- **Truthful Learner Stats:** Replaced hardcoded fallback numbers in `Dashboard.jsx` with honest zero/uncalculated states (`0 Quizzes`, `— Competency Score`) when no attempts have been taken.
-- **Dual Health Checks:** Mounted health router at both `/api/health` and root `/health` for seamless integration with Docker and cloud load balancers.
-- **No Multiprocessing Overhead:** Kept clean single-worker asynchronous event loop without adding unnecessary `num_workers`.
+### B. Database Changes & Safe Migration Strategy
+- **New `users` Table:**
+  - `id` (Integer Primary Key, Auto-increment)
+  - `email` (String 255, Unique, Index, Normalized Lowercase)
+  - `full_name` (String 255)
+  - `hashed_password` (String 255, Bcrypt Hash)
+  - `is_active` (Boolean, Default True)
+  - `created_at` / `updated_at` (UTC Timestamps)
+- **Safe Schema Alterations (`ALTER TABLE`):**
+  - Added `user_id` column to `learning_materials` (Nullable Integer, Foreign Key to `users.id`).
+  - Added `user_id` column to `quizzes` (Nullable Integer, Foreign Key to `users.id`).
+  - Executed non-destructively in `backend/app/database.py` during `init_db()` using SQLite `PRAGMA table_info` checks without deleting or resetting the existing database.
+- **Legacy Data Migration & Demo Account:**
+  - Pre-seeded permanent demo student account: `alex@example.com` / `student123`.
+  - All existing default student records (`student_default` in `quiz_attempts`, `learner_responses`, `competency_results`, `personalized_recommendations`) are seamlessly mapped to Alex.
+  - New students register with fresh accounts and maintain 100% isolated materials, quizzes, and competency profiles.
+
+### C. Route Authorization & Cross-User Data Isolation
+Private backend endpoints enforce user ownership using the FastAPI `get_current_user` dependency:
+1. **Unauthenticated Access:** Accessing `/api/materials`, `/api/quizzes`, `/api/attempts`, `/api/competencies`, or `/api/recommendations` without a valid Bearer token returns **HTTP 401 Unauthorized**.
+2. **Cross-User Protection:** If User B attempts to view, fetch content, or delete private materials/quizzes/attempts belonging to User A, the backend responds with **HTTP 403 Forbidden** (`"You do not have permission to access this resource."`).
+3. **Library Filtering:** Querying `/api/materials` or `/api/quizzes` filters records by `user_id == current_user.id` so private materials never appear in another student's library.
+
+### D. Frontend Navigation & Security Integration
+- **`src/context/AuthContext.jsx`:** React Context provider managing `user`, `token`, `isAuthenticated`, `login`, `register`, and `logout`. Automatically synchronizes state with `localStorage` and handles `401 Unauthorized` session expiry events.
+- **`ProtectedRoute` Wrapper:** Guards `/dashboard`, `/materials`, `/assistant`, `/quizzes`, `/subjects`, `/progress`, `/profile`, and `/settings`. Redirects unauthenticated visitors to `/login` while preserving navigation intent.
+- **`Login.jsx`:** Genuine login form with validation, backend authentication, loading states, error alerts, and a 1-click **"Sign In as Demo Student (Alex)"** button for hackathon evaluators. Removed non-functional forgot password links.
+- **`SignUp.jsx`:** Complete registration form featuring Full Name, Email, Degree & Branch, Semester, Password, and Confirm Password. Frontend and backend enforce minimum 8-character passwords and password match verification.
+- **`DashboardLayout.jsx` & `Navbar.jsx`:** Displays the authenticated student's name (`Good Morning, <Name>`), custom avatar initial, and a working session Logout button.
 
 ---
 
 ## 3. Implemented API Endpoints
 
-| Method | Endpoint | Description | Status Code |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/` | Root application metadata & documentation links | `200 OK` |
-| `GET` | `/health` | Container & cloud load balancer health check | `200 OK` |
-| `GET` | `/api/health` | Backend and database operational health check | `200 OK` / `503` |
-| `POST` | `/api/materials/upload` | Upload & extract text from PDF, DOCX, or TXT | `201 Created` / `400` |
-| `GET` | `/api/materials` | Lists all saved learning materials (optional subject filter) | `200 OK` |
-| `GET` | `/api/materials/{id}` | Retrieves document metadata and processing status | `200 OK` / `404` |
-| `GET` | `/api/materials/{id}/content` | Retrieves full extracted text content for a document | `200 OK` / `404` |
-| `DELETE` | `/api/materials/{id}` | Deletes document record and associated disk file | `200 OK` / `404` |
-| `POST` | `/api/quizzes/generate` | Generates MCQ assessment from material text | `201 Created` / `400` / `404` |
-| `GET` | `/api/quizzes` | Lists all generated quizzes (optional filters) | `200 OK` |
-| `GET` | `/api/quizzes/{id}` | Retrieves full quiz structure and questions | `200 OK` / `404` |
-| `POST` | `/api/quizzes/{id}/attempts` | Starts attempt with protected answers & explanations | `201 Created` / `404` |
-| `POST` | `/api/attempts/{id}/submit` | Submits answers; scores attempt; blocks duplicate submission | `200 OK` / `400` / `404` |
-| `GET` | `/api/attempts/{id}/result` | Retrieves completed evaluation results with explanations | `200 OK` / `400` / `404` |
-| `GET` | `/api/attempts` | Retrieves chronological user attempt history | `200 OK` |
-| `GET` | `/api/competencies` | Analyzes attempts and returns topic-level competency profile | `200 OK` |
-| `GET` | `/api/recommendations` | Generates targeted recommendations linked to identified gaps | `200 OK` |
+| Method | Endpoint | Description | Auth Required | Status Code |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register new account with bcrypt password hashing | No | `201 Created` / `400` / `422` |
+| `POST` | `/api/auth/login` | Authenticate credentials & issue signed JWT | No | `200 OK` / `401 Unauthorized` |
+| `GET` | `/api/auth/me` | Fetch currently authenticated user profile | **Yes (Bearer)** | `200 OK` / `401 Unauthorized` |
+| `POST` | `/api/auth/logout` | Invalidate current session and log out user | **Yes (Bearer)** | `200 OK` / `401 Unauthorized` |
+| `GET` | `/` | Root application metadata & documentation links | No | `200 OK` |
+| `GET` | `/health` | Container & cloud load balancer health check | No | `200 OK` |
+| `GET` | `/api/health` | Backend and database operational health check | No | `200 OK` / `503` |
+| `POST` | `/api/materials/upload` | Upload & extract text from PDF, DOCX, or TXT | **Yes (Bearer)** | `201 Created` / `400` / `401` |
+| `GET` | `/api/materials` | Lists authenticated user's learning materials | **Yes (Bearer)** | `200 OK` / `401` |
+| `GET` | `/api/materials/{id}` | Retrieves document metadata (verifies ownership) | **Yes (Bearer)** | `200 OK` / `403` / `404` |
+| `GET` | `/api/materials/{id}/content` | Retrieves full extracted text (verifies ownership) | **Yes (Bearer)** | `200 OK` / `403` / `404` |
+| `DELETE` | `/api/materials/{id}` | Deletes document record & file (verifies ownership) | **Yes (Bearer)** | `200 OK` / `403` / `404` |
+| `POST` | `/api/quizzes/generate` | Generates MCQ assessment from material text | **Yes (Bearer)** | `201 Created` / `403` / `404` |
+| `GET` | `/api/quizzes` | Lists authenticated user's generated quizzes | **Yes (Bearer)** | `200 OK` / `401` |
+| `GET` | `/api/quizzes/{id}` | Retrieves full quiz structure and questions | **Yes (Bearer)** | `200 OK` / `403` / `404` |
+| `POST` | `/api/quizzes/{id}/attempts` | Starts attempt with protected answers & explanations | **Yes (Bearer)** | `201 Created` / `403` / `404` |
+| `POST` | `/api/attempts/{id}/submit` | Submits answers; scores attempt; blocks duplicate | **Yes (Bearer)** | `200 OK` / `400` / `403` / `404` |
+| `GET` | `/api/attempts/{id}/result` | Retrieves completed evaluation results with explanations | **Yes (Bearer)** | `200 OK` / `403` / `404` |
+| `GET` | `/api/attempts` | Retrieves chronological user attempt history | **Yes (Bearer)** | `200 OK` / `401` |
+| `GET` | `/api/competencies` | Topic-level competency gap analysis for user | **Yes (Bearer)** | `200 OK` / `401` / `403` |
+| `GET` | `/api/recommendations` | Personalized recommendations mapped to user notes | **Yes (Bearer)** | `200 OK` / `401` / `403` |
 
 ---
 
 ## 4. Verification & Automated Test Results
 
 Automated test suite executed via `py -m pytest backend/tests -v`:
-- **Total Tests:** 36 tests
-- **Passed:** 36 passed (100% pass rate) in 2.48 seconds
+- **Total Tests:** 46 tests
+- **Passed:** 46 passed (100% pass rate) in 30.63 seconds
 - **Test Modules Covered:**
-  - `backend/tests/test_full_workflow.py`: Complete 12-step user workflow (1 test)
+  - `backend/tests/test_auth.py`: 10 comprehensive security & authentication tests
+    - Registration success with bcrypt password hashing
+    - Duplicate email rejection (HTTP 400)
+    - Input validation errors (password mismatch, short password, bad email format)
+    - Successful login issuing JWT Bearer token
+    - Demo user seed login (`alex@example.com` / `student123`)
+    - Login rejection with incorrect password (generic HTTP 401)
+    - Login rejection for unregistered account (generic HTTP 401)
+    - Protected endpoints deny unauthenticated access (HTTP 401)
+    - Authenticated access to `/api/auth/me` and `/api/auth/logout`
+    - Cross-user access denial security test (Alice vs Bob: HTTP 403 on private materials, content, deletion, and library isolation)
+  - `backend/tests/test_attempts.py`: Answer protection, scoring, duplicate submission prevention, input validation, history (9 tests)
+  - `backend/tests/test_competencies.py`: Competency gaps, thresholds, insufficient data handling, matching note recommendations (5 tests)
+  - `backend/tests/test_full_workflow.py`: Complete 12-step end-to-end user workflow test (1 test)
   - `backend/tests/test_health.py`: Root metadata, `/api/health`, `/health`, and DB schema verification (4 tests)
   - `backend/tests/test_materials.py`: PDF, DOCX, TXT uploads, rejection of invalid/corrupt files, listing, detail, content, deletion (11 tests)
   - `backend/tests/test_quiz_generator.py`: Quiz generation, fallback engine, input validation, listing, question retrieval (6 tests)
-  - `backend/tests/test_attempts.py`: Answer protection, scoring, duplicate submission prevention, input validation, history (9 tests)
-  - `backend/tests/test_competencies.py`: Topic-level accuracy calculation, gap thresholds, insufficient data handling, matching note recommendations (5 tests)
-- **Frontend Production Build:** `cmd /c npm run build` completed with 0 errors (`✓ 1610 modules transformed`, output in `dist/`).
+- **Frontend Production Build:** `cmd /c npm run build` completed with 0 errors (`✓ 1611 modules transformed`, output in `dist/`).
 - **Live Integration:** Both frontend dev server (`http://localhost:3000`) and FastAPI backend server (`http://127.0.0.1:8000`) verified operational with persistent SQLite database (`backend/edumind.db`).
 
 ---
 
-## 5. Deployment Preparation & Database Persistence Requirements
+## 5. Deployment Preparation & Environment Configuration
 
-- **Backend Startup:** `uvicorn backend.main:app --host 0.0.0.0 --port 8000`
-- **Frontend Startup:** `npm run dev` (development) or `npm run build && npm run preview` (production)
-- **Database Persistence:** SQLite stores data in `backend/edumind.db`. For containerized deployments (Docker, Fly.io, Railway, Render), mount a persistent disk volume to the directory containing `edumind.db` and `backend/uploads/`.
-- **Environment Variables:** Set `DATABASE_URL`, `CORS_ORIGINS`, and optional AI provider keys (`GEMINI_API_KEY` / `OPENAI_API_KEY`).
+### Backend Configuration (`backend/.env`):
+```env
+APP_ENV=development
+APP_HOST=127.0.0.1
+APP_PORT=8000
+DATABASE_URL=sqlite:///./edumind.db
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+MAX_UPLOAD_SIZE_BYTES=10485760
+
+# Authentication Security Settings
+SECRET_KEY=edumind-super-secret-jwt-signing-key-production-change-me
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Optional AI API keys (leave blank to use the built-in offline NLP engine)
+# GEMINI_API_KEY=your_gemini_key_here
+# OPENAI_API_KEY=your_openai_key_here
+```
+
+### Exact Startup Commands:
+1. **Backend Server:**
+   ```bash
+   py -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+   ```
+2. **Frontend Development Server:**
+   ```bash
+   npm run dev
+   ```
+3. **Frontend Production Build:**
+   ```bash
+   npm run build
+   ```
+4. **Backend Automated Tests:**
+   ```bash
+   py -m pytest backend/tests -v
+   ```
 
 ---
 
-## 6. Known Limitations
+## 6. Current Limitations & Roadmap
 
-- **Single-Learner Profile:** Currently operates with a default learner profile (`student_default`). Multi-user authentication with JWT/OAuth2 can be integrated in a future release.
+- **Password Reset:** Real password reset via SMTP email recovery is intentionally not faked; will be integrated when an active university mail server or SendGrid/Resend API is attached.
 - **Offline Recommendation Engine:** Recommendations use deterministic keyword, title, and syllabus code alignment to ensure 100% offline functionality without requiring paid external APIs.

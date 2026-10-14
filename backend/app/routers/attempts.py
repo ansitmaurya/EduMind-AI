@@ -104,6 +104,8 @@ def start_quiz_attempt(
         topic=quiz.topic,
         total_questions=len(active_questions),
         time_limit_seconds=quiz.time_limit_seconds,
+        status=attempt.status,
+        started_at=attempt.started_at,
         questions=active_questions
     )
 
